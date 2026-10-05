@@ -1,0 +1,30 @@
+#!/bin/sh
+# Blocks commits that stage .env files or lines that look like secrets.
+# Activate once per clone with: git config core.hooksPath .githooks
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+blocked=0
+
+# .env-style files (but never .env.example, which is a template)
+env_files=$(echo "$staged" | grep -E '(^|/)\.env(\..+)?$' | grep -v '\.env\.example$')
+if [ -n "$env_files" ]; then
+  echo "✖ Refusing to commit — these look like real .env files, not templates:"
+  echo "$env_files" | sed 's/^/    /'
+  echo "  If this is intentional, commit with --no-verify."
+  blocked=1
+fi
+
+# Common secret shapes in the actual diff content being committed
+secret_pattern='(AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|xox[baprs]-[0-9A-Za-z-]{10,}|AIza[0-9A-Za-z_-]{35})'
+hit=$(git diff --cached -U0 -- $staged | grep -E "$secret_pattern")
+if [ -n "$hit" ]; then
+  echo "✖ Refusing to commit — staged diff contains what looks like a secret:"
+  echo "$hit" | head -5
+  echo "  If this is a false positive, commit with --no-verify."
+  blocked=1
+fi
+
+[ "$blocked" = "1" ] && exit 1
+exit 0

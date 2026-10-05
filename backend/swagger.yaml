@@ -1,0 +1,155 @@
+openapi: 3.0.0
+info:
+  title: Family Tree API
+  version: 1.0.0
+  description: API Documentation
+servers:
+  - url: http://localhost:5001
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []
+paths:
+  /api/auth/register:
+    post:
+      summary: Register a new user
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '201':
+          description: User created
+  /api/auth/login:
+    post:
+      summary: Login user
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Successful authentication
+  /api/families:
+    get:
+      summary: Get all user families
+      tags: [Families]
+      responses:
+        '200':
+          description: List of families
+    post:
+      summary: Create a new family
+      tags: [Families]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                family_name:
+                  type: string
+      responses:
+        '201':
+          description: Family created
+  /api/family-tree/{family_id}:
+    get:
+      summary: Get family tree structure (nodes and edges)
+      tags: [Visualizations]
+      parameters:
+        - name: family_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Nodes and edges structure for ReactFlow
+  /api/persons:
+    post:
+      summary: Add a family member
+      tags: [Persons]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                family_id:
+                  type: string
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                gender:
+                  type: string
+                birth_place:
+                  type: string
+      responses:
+        '201':
+          description: Person created
+  /api/relationships:
+    post:
+      summary: Add a relationship between two members
+      tags: [Relationships]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                person1_id:
+                  type: string
+                person2_id:
+                  type: string
+                relationship_type:
+                  type: string
+                  example: "parent"
+      responses:
+        '201':
+          description: Relationship created
+  /api/gedcom/import:
+    post:
+      summary: Import a GEDCOM file
+      tags: [Import]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                family_id:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Nodes and edges

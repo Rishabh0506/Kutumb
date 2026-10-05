@@ -1,0 +1,71 @@
+services:
+  database:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: family_user
+      POSTGRES_PASSWORD: family_password
+      POSTGRES_DB: family_tree_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Postgres only runs files in this directory on first init (empty data
+      # dir) — this is what actually creates the schema for a fresh volume.
+      - ./backend/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U family_user -d family_tree_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - family_net
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "5001:5001"
+    environment:
+      PORT: 5001
+      NODE_ENV: production
+      DB_HOST: database
+      DB_USER: family_user
+      DB_PASSWORD: family_password
+      DB_NAME: family_tree_db
+      # Required — the backend refuses to start without it. Set in a .env
+      # file next to this compose file (see .env.example); no default here
+      # on purpose, so a misconfigured deploy fails loudly instead of
+      # running with a publicly-known secret.
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in a .env file next to docker-compose.yml — see .env.example}
+      ALLOWED_ORIGINS: http://localhost:3000
+      FRONTEND_URL: http://localhost:3000
+      # Optional — password reset just no-ops without these (see backend/utils/mailer.js)
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      # Required for photo uploads to work — see .env.example
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - family_net
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - family_net
+
+volumes:
+  pgdata:
+
+networks:
+  family_net:
+    driver: bridge
